@@ -106,9 +106,8 @@ async function main() {
           throw new Error('msteams unsupported in this fork');
         }
       }
-      console.log(JSON.stringify(messageObject));
 
-      // await sendNotification(webhookUrl, messageObject);
+      await sendNotification(webhookUrl, messageObject);
       core.info(`Notification sent successfully!`);
     }
   } catch (error) {
