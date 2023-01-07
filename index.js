@@ -24,13 +24,7 @@ const PULLS_ENDPOINT = `${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls`;
 async function getPullRequestsNeedingReview(prs) {
   const issuesNeedingReview = (await axios({
     method: 'GET',
-    url: `${GITHUB_API_URL}/search/issues`,
-    params: {
-      q: 'is:pr+state:open+review:required',
-      sort: 'updated',
-      order: 'desc',
-      per_page: '100'
-    },
+    url: `${GITHUB_API_URL}/search/issues?is:pr+state:open+review:required&sort=updated&order=desc&per_page=100`,
     headers: AUTH_HEADER,
   })).data.items;
 
