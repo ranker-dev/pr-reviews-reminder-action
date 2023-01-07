@@ -20,16 +20,43 @@ const AUTH_HEADER = {
 };
 const PULLS_ENDPOINT = `${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls`;
 
+
+async function getPullRequestsNeedingReview(prs) {
+  const issuesNeedingReview = (await axios({
+    method: 'GET',
+    url: `${GITHUB_API_URL}/search/issues`,
+    params: {
+      q: 'is:pr+state:open+review:required',
+      sort: 'updated',
+      order: 'desc',
+      per_page: '100'
+    },
+    headers: AUTH_HEADER,
+  })).data.items;
+
+  console.log(JSON.stringify(issuesNeedingReview));
+
+  const prUrlsNeedingReview = issuesNeedingReview.map(issue => issue.pull_request.url);
+
+  console.log(JSON.stringify(prUrlsNeedingReview));
+
+
+  return prs.filter(pr => prUrlsNeedingReview.includes(pr.url));
+}
+
 /**
  * Get Pull Requests from GitHub repository
  * @return {Promise} Axios promise
  */
 async function getPullRequests() {
-  return axios({
+  return (await axios({
     method: 'GET',
     url: PULLS_ENDPOINT,
+    params: {
+      per_page: '100'
+    },
     headers: AUTH_HEADER,
-  });
+  })).data;
 }
 
 /**
@@ -58,7 +85,13 @@ async function main() {
     const ignoreLabel = core.getInput('ignore-label');
     core.info('Getting open pull requests...');
     const pullRequests = await getPullRequests();
-    const totalReviewers = await getPullRequestsReviewersCount(pullRequests.data);
+    const pullRequestsNeedingReview = await getPullRequestsNeedingReview(pullRequests);
+
+    console.log(JSON.stringify(pullRequestsNeedingReview));
+
+    return;
+
+    const totalReviewers = await getPullRequestsReviewersCount(pullRequestsNeedingReview);
     core.info(`There are ${pullRequests.data.length} open pull requests and ${totalReviewers} reviewers`);
     const pullRequestsToReview = getPullRequestsToReview(pullRequests.data);
     const pullRequestsWithoutLabel = getPullRequestsWithoutLabel(pullRequestsToReview, ignoreLabel);
