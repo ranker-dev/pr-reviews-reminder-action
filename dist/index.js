@@ -100,9 +100,9 @@ function prettyMessage(prs, github2provider, provider) {
       case 'slack': {
         const mentions = [];
         for(let user of pr.users) {
-          mentions.push(github2provider[obj.login] ?
-            `<@${github2provider[obj.login]}>` :
-            `@${obj.login}`);
+          mentions.push(github2provider[user] ?
+            `<@${github2provider[user]}>` :
+            `@${user}`);
         }
         messageParts.push(`<${pr.url}|${pr.title}> ${mentions.join(' ')}\n`);
         break;
