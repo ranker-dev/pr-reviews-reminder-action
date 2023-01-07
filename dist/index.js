@@ -104,7 +104,7 @@ function prettyMessage(prs, github2provider, provider) {
             `<@${github2provider[user]}>` :
             `@${user}`);
         }
-        messageParts.push(`<${pr.url}|${pr.title}> ${mentions.join(' ')}\n`);
+        messageParts.push(`<${pr.url}|${pr.title}> ${mentions.join(' ')}`);
         break;
       }
     }
@@ -10578,9 +10578,8 @@ async function main() {
           throw new Error('msteams unsupported in this fork');
         }
       }
-      console.log(JSON.stringify(messageObject));
 
-      // await sendNotification(webhookUrl, messageObject);
+      await sendNotification(webhookUrl, messageObject);
       core.info(`Notification sent successfully!`);
     }
   } catch (error) {
