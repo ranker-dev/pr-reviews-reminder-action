@@ -10493,7 +10493,7 @@ async function getPullRequestsNeedingReview(prs) {
     method: 'GET',
     url: `${GITHUB_API_URL}/search/issues`,
     params: {
-      q: 'is:pr state:open review:required',
+      q: `is:pr state:open review:required repo:${GITHUB_REPOSITORY}`,
       sort: 'updated',
       order: 'desc',
       per_page: '100'
