@@ -98,7 +98,7 @@ function prettyMessage(prs, github2provider, provider) {
             `<@${github2provider[obj.login]}>` :
             `@${obj.login}`);
         }
-        messageParts.push(`<${obj.url}|${pr.title}> ${mentions.join(' ')}\n`);
+        messageParts.push(`<${pr.url}|${pr.title}> ${mentions.join(' ')}\n`);
         break;
       }
     }
