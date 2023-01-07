@@ -10501,11 +10501,11 @@ async function getPullRequestsNeedingReview(prs) {
     headers: AUTH_HEADER,
   })).data.items;
 
-  console.log(JSON.stringify(issuesNeedingReview));
+  console.log(JSON.stringify(issuesNeedingReview?.[0]));
 
   const prUrlsNeedingReview = issuesNeedingReview.map(issue => issue.pull_request.url);
 
-  console.log(JSON.stringify(prUrlsNeedingReview));
+  console.log(JSON.stringify(prUrlsNeedingReview?.[0]));
 
 
   return prs.filter(pr => prUrlsNeedingReview.includes(pr.url));
@@ -10552,9 +10552,13 @@ async function main() {
     const ignoreLabel = core.getInput('ignore-label');
     core.info('Getting open pull requests...');
     const pullRequests = await getPullRequests();
+
+    console.log(JSON.stringify(pullRequests?.[0]));
+
+
     const pullRequestsNeedingReview = await getPullRequestsNeedingReview(pullRequests);
 
-    console.log(JSON.stringify(pullRequestsNeedingReview));
+    console.log(JSON.stringify(pullRequestsNeedingReview?.[0]));
 
     return;
 
@@ -10582,6 +10586,7 @@ async function main() {
       core.info(`Notification sent successfully!`);
     }
   } catch (error) {
+    console.error(error);
     core.setFailed(error.message);
   }
 }
