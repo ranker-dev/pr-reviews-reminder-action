@@ -60,6 +60,14 @@ function createPr2UserArray(pullRequestsToReview) {
   return pr2user;
 }
 
+function createPrArray(pullRequestsToReview) {
+  return pullRequestsToReview.map(pr => ({
+    url: pr.html_url,
+    title: pr.title,
+    users: pr.requested_reviewers.map(user => user.login).concat(pr.requested_teams.map(team=>team.slug))
+  }));
+}
+
 /**
  * Convert a string like "name1:ID123,name2:ID456" to an Object { name1: "ID123", name2: "ID456"}
  * @param {String} str String to convert to Object
@@ -85,27 +93,23 @@ function stringToObject(str) {
  * @param {String} provider Service to use: slack or msteams
  * @return {String} Pretty message to print
  */
-function prettyMessage(pr2user, github2provider, provider) {
-  let message = '';
-  for (const obj of pr2user) {
+function prettyMessage(prs, github2provider, provider) {
+  const messageParts = [];
+  for (const pr of prs) {
     switch (provider) {
       case 'slack': {
-        const mention = github2provider[obj.login] ?
-          `<@${github2provider[obj.login]}>` :
-          `@${obj.login}`;
-        message += `Hey ${mention}, the PR "${obj.title}" is waiting for your review: ${obj.url}\n`;
-        break;
-      }
-      case 'msteams': {
-        const mention = github2provider[obj.login] ?
-          `<at>${obj.login}</at>` :
-          `@${obj.login}`;
-        message += `Hey ${mention}, the PR "${obj.title}" is waiting for your review: [${obj.url}](${obj.url})  \n`;
+        const mentions = [];
+        for(let user of pr.users) {
+          mentions.push(github2provider[obj.login] ?
+            `<@${github2provider[obj.login]}>` :
+            `@${obj.login}`);
+        }
+        messageParts.push(`<${obj.url}|${pr.title}> ${mentions.join(' ')}\n`);
         break;
       }
     }
   }
-  return message;
+  return messageParts.join("\n");
 }
 
 /**
@@ -140,7 +144,7 @@ function formatSlackMessage(channel, message) {
   const messageData = {
     channel: channel,
     username: 'Pull Request reviews reminder',
-    text: message,
+    text: "Pull Requests Needing Review:\n\n" + message,
   };
   return messageData;
 }
@@ -186,6 +190,7 @@ module.exports = {
   getPullRequestsWithoutLabel,
   getPullRequestsReviewersCount,
   createPr2UserArray,
+  createPrArray,
   stringToObject,
   prettyMessage,
   getTeamsMentions,
@@ -10473,7 +10478,7 @@ const {
   getPullRequestsToReview,
   getPullRequestsWithoutLabel,
   getPullRequestsReviewersCount,
-  createPr2UserArray,
+  createPrArray,
   prettyMessage,
   stringToObject,
   getTeamsMentions,
@@ -10551,38 +10556,31 @@ async function main() {
     const github2providerString = core.getInput('github-provider-map');
     const ignoreLabel = core.getInput('ignore-label');
     core.info('Getting open pull requests...');
-    const pullRequests = await getPullRequests();
+    const allPullRequests = await getPullRequests();
 
-    console.log(JSON.stringify(pullRequests?.[0]));
+    const pullRequests = await getPullRequestsNeedingReview(allPullRequests);
 
-
-    const pullRequestsNeedingReview = await getPullRequestsNeedingReview(pullRequests);
-
-    console.log(JSON.stringify(pullRequestsNeedingReview?.[0]));
-
-    return;
-
-    const totalReviewers = await getPullRequestsReviewersCount(pullRequestsNeedingReview);
-    core.info(`There are ${pullRequests.data.length} open pull requests and ${totalReviewers} reviewers`);
-    const pullRequestsToReview = getPullRequestsToReview(pullRequests.data);
+    const totalReviewers = await getPullRequestsReviewersCount(pullRequests);
+    core.info(`There are ${pullRequests.length} open pull requests and ${totalReviewers} reviewers`);
+    const pullRequestsToReview = getPullRequestsToReview(pullRequests);
     const pullRequestsWithoutLabel = getPullRequestsWithoutLabel(pullRequestsToReview, ignoreLabel);
     core.info(`There are ${pullRequestsWithoutLabel.length} pull requests waiting for reviews`);
     if (pullRequestsWithoutLabel.length) {
-      const pr2user = createPr2UserArray(pullRequestsWithoutLabel);
+      const prs = createPrArray(pullRequestsWithoutLabel);
       const github2provider = stringToObject(github2providerString);
-      const messageText = prettyMessage(pr2user, github2provider, provider);
+      const messageText = prettyMessage(prs, github2provider, provider);
       let messageObject;
       switch (provider) {
         case 'slack':
           messageObject = formatSlackMessage(channel, messageText);
           break;
         case 'msteams': {
-          const msTeamsMentions = getTeamsMentions(github2provider, pr2user);
-          messageObject = formatTeamsMessage(messageText, msTeamsMentions);
-          break;
+          throw new Error('msteams unsupported in this fork');
         }
       }
-      await sendNotification(webhookUrl, messageObject);
+      console.log(JSON.stringify(messageObject));
+
+      // await sendNotification(webhookUrl, messageObject);
       core.info(`Notification sent successfully!`);
     }
   } catch (error) {

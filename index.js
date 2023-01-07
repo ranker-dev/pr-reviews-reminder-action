@@ -6,7 +6,7 @@ const {
   getPullRequestsToReview,
   getPullRequestsWithoutLabel,
   getPullRequestsReviewersCount,
-  createPr2UserArray,
+  createPrArray,
   prettyMessage,
   stringToObject,
   getTeamsMentions,
@@ -84,38 +84,31 @@ async function main() {
     const github2providerString = core.getInput('github-provider-map');
     const ignoreLabel = core.getInput('ignore-label');
     core.info('Getting open pull requests...');
-    const pullRequests = await getPullRequests();
+    const allPullRequests = await getPullRequests();
 
-    console.log(JSON.stringify(pullRequests?.[0]));
+    const pullRequests = await getPullRequestsNeedingReview(allPullRequests);
 
-
-    const pullRequestsNeedingReview = await getPullRequestsNeedingReview(pullRequests);
-
-    console.log(JSON.stringify(pullRequestsNeedingReview?.[0]));
-
-    return;
-
-    const totalReviewers = await getPullRequestsReviewersCount(pullRequestsNeedingReview);
-    core.info(`There are ${pullRequests.data.length} open pull requests and ${totalReviewers} reviewers`);
-    const pullRequestsToReview = getPullRequestsToReview(pullRequests.data);
+    const totalReviewers = await getPullRequestsReviewersCount(pullRequests);
+    core.info(`There are ${pullRequests.length} open pull requests and ${totalReviewers} reviewers`);
+    const pullRequestsToReview = getPullRequestsToReview(pullRequests);
     const pullRequestsWithoutLabel = getPullRequestsWithoutLabel(pullRequestsToReview, ignoreLabel);
     core.info(`There are ${pullRequestsWithoutLabel.length} pull requests waiting for reviews`);
     if (pullRequestsWithoutLabel.length) {
-      const pr2user = createPr2UserArray(pullRequestsWithoutLabel);
+      const prs = createPrArray(pullRequestsWithoutLabel);
       const github2provider = stringToObject(github2providerString);
-      const messageText = prettyMessage(pr2user, github2provider, provider);
+      const messageText = prettyMessage(prs, github2provider, provider);
       let messageObject;
       switch (provider) {
         case 'slack':
           messageObject = formatSlackMessage(channel, messageText);
           break;
         case 'msteams': {
-          const msTeamsMentions = getTeamsMentions(github2provider, pr2user);
-          messageObject = formatTeamsMessage(messageText, msTeamsMentions);
-          break;
+          throw new Error('msteams unsupported in this fork');
         }
       }
-      await sendNotification(webhookUrl, messageObject);
+      console.log(JSON.stringify(messageObject));
+
+      // await sendNotification(webhookUrl, messageObject);
       core.info(`Notification sent successfully!`);
     }
   } catch (error) {

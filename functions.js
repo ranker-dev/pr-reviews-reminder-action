@@ -54,6 +54,14 @@ function createPr2UserArray(pullRequestsToReview) {
   return pr2user;
 }
 
+function createPrArray(pullRequestsToReview) {
+  return pullRequestsToReview.map(pr => ({
+    url: pr.html_url,
+    title: pr.title,
+    users: pr.requested_reviewers.map(user => user.login).concat(pr.requested_teams.map(team=>team.slug))
+  }));
+}
+
 /**
  * Convert a string like "name1:ID123,name2:ID456" to an Object { name1: "ID123", name2: "ID456"}
  * @param {String} str String to convert to Object
@@ -79,27 +87,23 @@ function stringToObject(str) {
  * @param {String} provider Service to use: slack or msteams
  * @return {String} Pretty message to print
  */
-function prettyMessage(pr2user, github2provider, provider) {
-  let message = '';
-  for (const obj of pr2user) {
+function prettyMessage(prs, github2provider, provider) {
+  const messageParts = [];
+  for (const pr of prs) {
     switch (provider) {
       case 'slack': {
-        const mention = github2provider[obj.login] ?
-          `<@${github2provider[obj.login]}>` :
-          `@${obj.login}`;
-        message += `Hey ${mention}, the PR "${obj.title}" is waiting for your review: ${obj.url}\n`;
-        break;
-      }
-      case 'msteams': {
-        const mention = github2provider[obj.login] ?
-          `<at>${obj.login}</at>` :
-          `@${obj.login}`;
-        message += `Hey ${mention}, the PR "${obj.title}" is waiting for your review: [${obj.url}](${obj.url})  \n`;
+        const mentions = [];
+        for(let user of pr.users) {
+          mentions.push(github2provider[obj.login] ?
+            `<@${github2provider[obj.login]}>` :
+            `@${obj.login}`);
+        }
+        messageParts.push(`<${obj.url}|${pr.title}> ${mentions.join(' ')}\n`);
         break;
       }
     }
   }
-  return message;
+  return messageParts.join("\n");
 }
 
 /**
@@ -134,7 +138,7 @@ function formatSlackMessage(channel, message) {
   const messageData = {
     channel: channel,
     username: 'Pull Request reviews reminder',
-    text: message,
+    text: "Pull Requests Needing Review:\n\n" + message,
   };
   return messageData;
 }
@@ -180,6 +184,7 @@ module.exports = {
   getPullRequestsWithoutLabel,
   getPullRequestsReviewersCount,
   createPr2UserArray,
+  createPrArray,
   stringToObject,
   prettyMessage,
   getTeamsMentions,
